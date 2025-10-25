@@ -256,6 +256,35 @@ button:hover {
   image-rendering: pixelated;
 }
 
+/* Divider between sections */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 20px 0;
+}
+
+/* RGB section helpers */
+.rgb-channel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.rgb-label {
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text);
+  background: #0b1221;
+  user-select: none;
+}
+
 /* Responsive tweaks */
 @media (max-width: 480px) {
   :root { --cell-size: 36px; }

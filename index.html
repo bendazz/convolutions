@@ -54,7 +54,7 @@
         <div id="result-grid" class="grid result" aria-label="5 by 5 result grid"></div>
       </section>
       </div>
-      
+
   <div class="app-row">
   <!-- Same-padding demo (output same size as input) -->
       <section class="panel">
@@ -133,6 +133,59 @@
         </section>
       </div>
     </main>
+
+    <hr class="section-divider" />
+
+    <div class="app">
+      <div class="app-row">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>RGB Image Matrices (7×7)</h2>
+          </div>
+          <div class="rgb-channel">
+            <div class="rgb-label" aria-hidden="true">R</div>
+            <div id="imageR-grid" class="grid" aria-label="7 by 7 image grid (Red)"></div>
+          </div>
+          <div class="rgb-channel">
+            <div class="rgb-label" aria-hidden="true">G</div>
+            <div id="imageG-grid" class="grid" aria-label="7 by 7 image grid (Green)"></div>
+          </div>
+          <div class="rgb-channel">
+            <div class="rgb-label" aria-hidden="true">B</div>
+            <div id="imageB-grid" class="grid" aria-label="7 by 7 image grid (Blue)"></div>
+          </div>
+          <div class="legend" aria-hidden="true">
+            <span>Low</span>
+            <span class="gradient gradient-image" aria-hidden="true"></span>
+            <span>High</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Kernel (3×3)</h2>
+          </div>
+          <div id="kernel-grid-rgb" class="grid kernel" aria-label="3 by 3 kernel grid (RGB)"></div>
+          <div class="legend" aria-hidden="true">
+            <span>Negative</span>
+            <span class="gradient gradient-kernel" aria-hidden="true"></span>
+            <span>Positive</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Result (5×5)</h2>
+            <div class="controls">
+              <button id="show-all-rgb" title="Compute all positions for RGB and fill the entire result grid">Show All</button>
+              <button id="copy-numpy-rgb" title="Copy NumPy code for these RGB images and kernel">Copy NumPy</button>
+              <button id="step-once-rgb" title="Move the kernel one position and compute the output at that location (RGB)">Step</button>
+            </div>
+          </div>
+          <div id="result-grid-rgb" class="grid result" aria-label="5 by 5 result grid (RGB)"></div>
+        </section>
+      </div>
+    </div>
 
     
 

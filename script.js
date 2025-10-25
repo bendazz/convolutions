@@ -21,6 +21,15 @@
   const step2Btn = document.getElementById('step2-once');
   const showAll2Btn = document.getElementById('show2-all');
   const copyNumpy2Btn = document.getElementById('copy2-numpy');
+  // RGB first-row section DOM
+  const imageRGrid = document.getElementById('imageR-grid');
+  const imageGGrid = document.getElementById('imageG-grid');
+  const imageBGrid = document.getElementById('imageB-grid');
+  const kernelGridRGB = document.getElementById('kernel-grid-rgb');
+  const resultGridRGB = document.getElementById('result-grid-rgb');
+  const stepBtnRGB = document.getElementById('step-once-rgb');
+  const showAllBtnRGB = document.getElementById('show-all-rgb');
+  const copyNumpyBtnRGB = document.getElementById('copy-numpy-rgb');
   // MNIST-like practice DOM
   const kernelGrid3 = document.getElementById('kernel3-grid');
   const mnistPaste = document.getElementById('mnist-paste');
@@ -54,6 +63,15 @@
   let RES3_ROWS = 0, RES3_COLS = 0;
   let imageMatrix3 = [];
   let kernelMatrix3 = [];
+  // RGB state
+  let IMG_RGB_ROWS = 0, IMG_RGB_COLS = 0;
+  let KER_RGB_ROWS = 0, KER_RGB_COLS = 0;
+  let RES_RGB_ROWS = 0, RES_RGB_COLS = 0;
+  let imageMatrixR = [], imageMatrixG = [], imageMatrixB = [];
+  let kernelMatrixRGB = [];
+  let imageRMin = 0, imageRMax = 255;
+  let imageGMin = 0, imageGMax = 255;
+  let imageBMin = 0, imageBMax = 255;
 
   function setGridTemplates() {
     imageGrid.style.gridTemplateColumns = `repeat(${IMG_COLS}, var(--cell-size))`;
@@ -70,6 +88,12 @@
     if (resultGrid2) resultGrid2.style.gridTemplateColumns = `repeat(${IMG_COLS}, var(--cell-size))`;
     if (kernelGrid3) kernelGrid3.style.gridTemplateColumns = `repeat(${KER3_COLS}, var(--cell-size))`;
     // no numeric result grid for MNIST practice; only canvas
+    // RGB templates
+    if (imageRGrid) imageRGrid.style.gridTemplateColumns = `repeat(${IMG_RGB_COLS || IMG_COLS}, var(--cell-size))`;
+    if (imageGGrid) imageGGrid.style.gridTemplateColumns = `repeat(${IMG_RGB_COLS || IMG_COLS}, var(--cell-size))`;
+    if (imageBGrid) imageBGrid.style.gridTemplateColumns = `repeat(${IMG_RGB_COLS || IMG_COLS}, var(--cell-size))`;
+    if (kernelGridRGB) kernelGridRGB.style.gridTemplateColumns = `repeat(${KER_RGB_COLS || KER_COLS}, var(--cell-size))`;
+    if (resultGridRGB) resultGridRGB.style.gridTemplateColumns = `repeat(${RES_RGB_COLS || RESULT_COLS}, var(--cell-size))`;
   }
 
   // Helpers
@@ -119,6 +143,24 @@
     const sat = 70 + 20 * t;
     const light = 22 + 40 * t;
     el.style.background = `hsl(${hue} ${sat}% ${light}%)`;
+  }
+
+  // Channel-tinted heatmaps for RGB
+  function setImageCellColorChannel(el, enabled, channel, mn, mx) {
+    if (!enabled) {
+      el.style.background = '';
+      return;
+    }
+    const v = Number(el.value);
+    const denom = (mx - mn) || 1;
+    const t = (v - mn) / denom; // 0..1
+    const baseLight = 22 + 40 * t;
+    const sat = 70 + 20 * t;
+    let hue;
+    if (channel === 'R') hue = 0;
+    else if (channel === 'G') hue = 120;
+    else hue = 215; // B
+    el.style.background = `hsl(${hue} ${sat}% ${baseLight}%)`;
   }
 
   function setKernelCellColor(el, enabled) {
@@ -229,6 +271,61 @@
           onChange: () => setKernelCellColor(cell, true),
         });
         kernelGrid2.appendChild(cell);
+      }
+    }
+  }
+
+  function buildRgbImageGrids() {
+    if (!imageRGrid || !imageGGrid || !imageBGrid) return;
+    imageRGrid.innerHTML = '';
+    imageGGrid.innerHTML = '';
+    imageBGrid.innerHTML = '';
+    for (let r = 0; r < IMG_RGB_ROWS; r++) {
+      for (let c = 0; c < IMG_RGB_COLS; c++) {
+        const cellR = createNumberCell({ min: -999, max: 999, step: 1, value: imageMatrixR[r][c], readOnly: true, onChange: () => setImageCellColorChannel(cellR, true, 'R', imageRMin, imageRMax) });
+        const cellG = createNumberCell({ min: -999, max: 999, step: 1, value: imageMatrixG[r][c], readOnly: true, onChange: () => setImageCellColorChannel(cellG, true, 'G', imageGMin, imageGMax) });
+        const cellB = createNumberCell({ min: -999, max: 999, step: 1, value: imageMatrixB[r][c], readOnly: true, onChange: () => setImageCellColorChannel(cellB, true, 'B', imageBMin, imageBMax) });
+        imageRGrid.appendChild(cellR);
+        imageGGrid.appendChild(cellG);
+        imageBGrid.appendChild(cellB);
+      }
+    }
+    positionKernelOverlayRGB();
+    refreshRgbHeatmaps();
+  }
+
+  function refreshRgbHeatmaps() {
+    if (imageRGrid) imageRGrid.querySelectorAll('input.cell').forEach(el => setImageCellColorChannel(el, true, 'R', imageRMin, imageRMax));
+    if (imageGGrid) imageGGrid.querySelectorAll('input.cell').forEach(el => setImageCellColorChannel(el, true, 'G', imageGMin, imageGMax));
+    if (imageBGrid) imageBGrid.querySelectorAll('input.cell').forEach(el => setImageCellColorChannel(el, true, 'B', imageBMin, imageBMax));
+  }
+
+  function buildKernelGridRGB() {
+    if (!kernelGridRGB) return;
+    kernelGridRGB.innerHTML = '';
+    for (let r = 0; r < KER_RGB_ROWS; r++) {
+      for (let c = 0; c < KER_RGB_COLS; c++) {
+        const cell = createNumberCell({
+          min: -999,
+          max: 999,
+          step: 1,
+          value: kernelMatrixRGB[r][c],
+          readOnly: true,
+          onChange: () => setKernelCellColor(cell, true),
+        });
+        kernelGridRGB.appendChild(cell);
+      }
+    }
+  }
+
+  function buildResultGridRGB() {
+    if (!resultGridRGB) return;
+    resultGridRGB.innerHTML = '';
+    const MIN = -999, MAX = 999;
+    for (let r = 0; r < RES_RGB_ROWS; r++) {
+      for (let c = 0; c < RES_RGB_COLS; c++) {
+        const cell = createNumberCell({ min: MIN, max: MAX, step: 1, value: '', readOnly: true });
+        resultGridRGB.appendChild(cell);
       }
     }
   }
@@ -528,6 +625,39 @@
     overlay.style.height = `${lastRect.bottom - firstRect.top}px`;
   }
 
+  function positionKernelOverlayGeneric(gridEl, totalRows, totalCols, kerRows, kerCols, r, c) {
+    if (!gridEl) return;
+    const cells = gridEl.querySelectorAll('input.cell');
+    if (cells.length < totalRows * totalCols) return;
+    r = Math.max(0, Math.min(totalRows - kerRows, r));
+    c = Math.max(0, Math.min(totalCols - kerCols, c));
+    const firstIdx = r * totalCols + c;
+    const lastIdx = (r + (kerRows - 1)) * totalCols + (c + (kerCols - 1));
+    const first = cells[firstIdx];
+    const last = cells[lastIdx];
+    if (!first || !last) return;
+    const gridRect = gridEl.getBoundingClientRect();
+    const firstRect = first.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+    let overlay = gridEl.querySelector('.window-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'window-overlay';
+      gridEl.appendChild(overlay);
+    }
+    overlay.style.left = `${firstRect.left - gridRect.left}px`;
+    overlay.style.top = `${firstRect.top - gridRect.top}px`;
+    overlay.style.width = `${lastRect.right - firstRect.left}px`;
+    overlay.style.height = `${lastRect.bottom - firstRect.top}px`;
+  }
+
+  function positionKernelOverlayRGB(r = 0, c = 0) {
+    if (!imageRGrid || !imageGGrid || !imageBGrid) return;
+    positionKernelOverlayGeneric(imageRGrid, IMG_RGB_ROWS, IMG_RGB_COLS, KER_RGB_ROWS, KER_RGB_COLS, r, c);
+    positionKernelOverlayGeneric(imageGGrid, IMG_RGB_ROWS, IMG_RGB_COLS, KER_RGB_ROWS, KER_RGB_COLS, r, c);
+    positionKernelOverlayGeneric(imageBGrid, IMG_RGB_ROWS, IMG_RGB_COLS, KER_RGB_ROWS, KER_RGB_COLS, r, c);
+  }
+
   function flatIndex(r, c, cols) {
     return r * cols + c;
   }
@@ -594,6 +724,20 @@
     return sum;
   }
 
+  function computeCrossCorrelationAtRGB(r, c) {
+    let sum = 0;
+    for (let i = 0; i < KER_RGB_ROWS; i++) {
+      for (let j = 0; j < KER_RGB_COLS; j++) {
+        const kerVal = readGridCellValue(kernelGridRGB, i, j, KER_RGB_COLS);
+        const rVal = readGridCellValue(imageRGrid, r + i, c + j, IMG_RGB_COLS);
+        const gVal = readGridCellValue(imageGGrid, r + i, c + j, IMG_RGB_COLS);
+        const bVal = readGridCellValue(imageBGrid, r + i, c + j, IMG_RGB_COLS);
+        sum += kerVal * (rVal + gVal + bVal);
+      }
+    }
+    return sum;
+  }
+
   function stepOnce() {
     if (resumeFreshStepping) {
       resumeFreshStepping = false;
@@ -616,6 +760,37 @@
         // Optional: clear overlay stays at (0,0) next click
       }
     }
+  }
+
+  let curR_rgb = 0, curC_rgb = 0; let resumeFreshSteppingRgb = false;
+  function clearResultGridRGB() {
+    if (!resultGridRGB) return;
+    resultGridRGB.querySelectorAll('input.cell').forEach(cell => cell.value = '');
+  }
+  function writeResultCellValueRGB(r, c, value) {
+    if (!resultGridRGB) return;
+    const cells = resultGridRGB.querySelectorAll('input.cell');
+    const idx = r * RES_RGB_COLS + c;
+    if (cells[idx]) cells[idx].value = String(value);
+  }
+  function stepOnceRGB() {
+    if (resumeFreshSteppingRgb) { resumeFreshSteppingRgb = false; curR_rgb = 0; curC_rgb = 0; }
+    clearResultGridRGB();
+    const y = computeCrossCorrelationAtRGB(curR_rgb, curC_rgb);
+    writeResultCellValueRGB(curR_rgb, curC_rgb, y);
+    positionKernelOverlayRGB(curR_rgb, curC_rgb);
+    curC_rgb += 1;
+    if (curC_rgb >= RES_RGB_COLS) { curC_rgb = 0; curR_rgb += 1; if (curR_rgb >= RES_RGB_ROWS) { curR_rgb = 0; } }
+  }
+  function showAllRGB() {
+    clearResultGridRGB();
+    for (let r = 0; r < RES_RGB_ROWS; r++) {
+      for (let c = 0; c < RES_RGB_COLS; c++) {
+        const y = computeCrossCorrelationAtRGB(r, c);
+        writeResultCellValueRGB(r, c, y);
+      }
+    }
+    curR_rgb = 0; curC_rgb = 0; positionKernelOverlayRGB(0,0); resumeFreshSteppingRgb = true;
   }
 
   function stepOnce2() {
@@ -754,7 +929,7 @@
     buildKernelGrid2();
     buildResultGrid2();
     positionKernelOverlay2(0, 0);
-    // MNIST-like: default synthetic 28x28 and Sobel X
+  // MNIST-like: default synthetic 28x28 and Sobel X
     imageMatrix3 = genRing(28, 28);
     kernelMatrix3 = [[-1,0,1],[-2,0,2],[-1,0,1]];
     IMG3_ROWS = imageMatrix3.length; IMG3_COLS = imageMatrix3[0].length;
@@ -775,6 +950,29 @@
     if (mnistPaste) mnistPaste.value = '';
     if (mnistError) mnistError.textContent = '';
     clearCanvas(mnistCanvas);
+
+    // RGB row: initialize using current problem's image and kernel
+    imageMatrixR = imageMatrix.map(row => row.slice());
+    imageMatrixG = imageMatrix.map(row => row.slice());
+    imageMatrixB = imageMatrix.map(row => row.slice());
+    kernelMatrixRGB = kernelMatrix.map(row => row.slice());
+    IMG_RGB_ROWS = IMG_ROWS; IMG_RGB_COLS = IMG_COLS;
+    KER_RGB_ROWS = KER_ROWS; KER_RGB_COLS = KER_COLS;
+    RES_RGB_ROWS = RESULT_ROWS; RES_RGB_COLS = RESULT_COLS;
+    [imageRMin, imageRMax] = computeMinMax(imageMatrixR);
+    [imageGMin, imageGMax] = computeMinMax(imageMatrixG);
+    [imageBMin, imageBMax] = computeMinMax(imageMatrixB);
+    setGridTemplates();
+    buildRgbImageGrids();
+    // color scaling for RGB kernel grid only
+    {
+      const prevMaxAbs = kernelMaxAbs;
+      kernelMaxAbs = computeMaxAbs(kernelMatrixRGB);
+      buildKernelGridRGB();
+      kernelMaxAbs = prevMaxAbs;
+    }
+    buildResultGridRGB();
+    positionKernelOverlayRGB(0, 0);
   }
 
   function populateProblemSelect() {
@@ -856,6 +1054,7 @@
   // Reposition the overlay on resize in case sizes change
   window.addEventListener('resize', () => positionKernelOverlay(curR, curC));
   window.addEventListener('resize', () => positionKernelOverlay2(curR2, curC2));
+  window.addEventListener('resize', () => positionKernelOverlayRGB(curR_rgb, curC_rgb));
 
   // Wire buttons
   if (stepBtn) stepBtn.addEventListener('click', stepOnce);
@@ -868,8 +1067,19 @@
   if (mnistCopyBtn) mnistCopyBtn.addEventListener('click', copyNumpyCodeMnist);
   if (mnistNewBtn) mnistNewBtn.addEventListener('click', setMnistProblemRandom);
   if (showAllBtn) showAllBtn.addEventListener('click', showAll);
+  if (stepBtnRGB) stepBtnRGB.addEventListener('click', stepOnceRGB);
+  if (showAllBtnRGB) showAllBtnRGB.addEventListener('click', showAllRGB);
+  if (copyNumpyBtnRGB) copyNumpyBtnRGB.addEventListener('click', () => {
+    const toNp = (mat) => {
+      const rows = mat.map(r => `  [${r.join(', ')}]`).join(',\n');
+      return `np.array([\n${rows}\n], dtype=np.int32)`;
+    };
+    const code = `import numpy as np\n\nimage_r = ${toNp(imageMatrixR)}\n\nimage_g = ${toNp(imageMatrixG)}\n\nimage_b = ${toNp(imageMatrixB)}\n\n# Optional combined tensor (C,H,W)\nimage = np.stack([image_r, image_g, image_b], axis=0)\n\nkernel = ${toNp(kernelMatrixRGB)}\n`;
+    copyTextToClipboard(code, copyNumpyBtnRGB);
+  });
 
   // Initial overlay position
   positionKernelOverlay(0, 0);
   positionKernelOverlay2(0, 0);
+  positionKernelOverlayRGB(0, 0);
 })();
