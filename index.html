@@ -93,6 +93,45 @@
         <div id="result2-grid" class="grid result" aria-label="result grid (same size)"></div>
       </section>
       </div>
+
+      <!-- MNIST-like practice: paste result and render transformed image -->
+      <div class="app-row">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>MNIST Image (28×28)</h2>
+          </div>
+          <div class="legend" aria-hidden="true">
+            <span>Low</span>
+            <span class="gradient gradient-image" aria-hidden="true"></span>
+            <span>High</span>
+          </div>
+          <canvas id="mnist-original-canvas" class="img-canvas" width="160" height="160" aria-label="original image preview"></canvas>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Kernel (3×3)</h2>
+            <div class="controls">
+              <button id="mnist-new" title="Load a new MNIST image and kernel">New Problem</button>
+              <button id="mnist-copy" title="Copy NumPy code for this MNIST image and kernel">Copy NumPy</button>
+            </div>
+          </div>
+          <p id="kernel3-desc" class="kernel-desc">Function: Edge detection (Sobel X)</p>
+          <div id="kernel3-grid" class="grid kernel" aria-label="mnist-like kernel grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Your Result (paste)</h2>
+            <div class="controls">
+              <button id="mnist-render" title="Parse the pasted matrix and render the transformed image">Render</button>
+            </div>
+          </div>
+          <textarea id="mnist-paste" class="paste" rows="7" placeholder="Paste a matrix like from Colab, e.g.:\n[8.0, 8.0, 0.0, -8.0, -8.0]\n[8.0, 8.0, 0.0, -8.0, -8.0]\n[8.0, 8.0, 0.0, -8.0, -8.0]\n[8.0, 8.0, 0.0, -8.0, -8.0]\n[8.0, 8.0, 0.0, -8.0, -8.0]"></textarea>
+          <div id="mnist-error" class="error" role="alert" aria-live="polite"></div>
+          <canvas id="mnist-canvas" class="img-canvas" width="160" height="160" aria-label="rendered transformed image"></canvas>
+        </section>
+      </div>
     </main>
 
     

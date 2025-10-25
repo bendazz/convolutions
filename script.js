@@ -21,6 +21,16 @@
   const step2Btn = document.getElementById('step2-once');
   const showAll2Btn = document.getElementById('show2-all');
   const copyNumpy2Btn = document.getElementById('copy2-numpy');
+  // MNIST-like practice DOM
+  const kernelGrid3 = document.getElementById('kernel3-grid');
+  const mnistPaste = document.getElementById('mnist-paste');
+  const mnistRenderBtn = document.getElementById('mnist-render');
+  const mnistError = document.getElementById('mnist-error');
+  const mnistCanvas = document.getElementById('mnist-canvas');
+  const mnistOriginalCanvas = document.getElementById('mnist-original-canvas');
+  const mnistCopyBtn = document.getElementById('mnist-copy');
+  const mnistNewBtn = document.getElementById('mnist-new');
+  const kernel3Desc = document.getElementById('kernel3-desc');
 
   // Problem state (set per problem)
   let IMG_ROWS = 0, IMG_COLS = 0;
@@ -38,6 +48,12 @@
   let curR2 = 0;
   let curC2 = 0;
   let resumeFreshStepping2 = false;
+  // MNIST-like demo sizes
+  let IMG3_ROWS = 0, IMG3_COLS = 0;
+  let KER3_ROWS = 0, KER3_COLS = 0;
+  let RES3_ROWS = 0, RES3_COLS = 0;
+  let imageMatrix3 = [];
+  let kernelMatrix3 = [];
 
   function setGridTemplates() {
     imageGrid.style.gridTemplateColumns = `repeat(${IMG_COLS}, var(--cell-size))`;
@@ -52,6 +68,8 @@
     if (imageGrid2) imageGrid2.style.gridTemplateColumns = `repeat(${PAD_COLS}, var(--cell-size))`;
     if (kernelGrid2) kernelGrid2.style.gridTemplateColumns = `repeat(${KER_COLS}, var(--cell-size))`;
     if (resultGrid2) resultGrid2.style.gridTemplateColumns = `repeat(${IMG_COLS}, var(--cell-size))`;
+    if (kernelGrid3) kernelGrid3.style.gridTemplateColumns = `repeat(${KER3_COLS}, var(--cell-size))`;
+    // no numeric result grid for MNIST practice; only canvas
   }
 
   // Helpers
@@ -231,6 +249,197 @@
         resultGrid2.appendChild(cell);
       }
     }
+  }
+
+  function buildKernelGrid3() {
+    if (!kernelGrid3) return;
+    kernelGrid3.innerHTML = '';
+    for (let r = 0; r < KER3_ROWS; r++) {
+      for (let c = 0; c < KER3_COLS; c++) {
+        const cell = createNumberCell({
+          min: -999,
+          max: 999,
+          step: 1,
+          value: kernelMatrix3[r][c],
+          readOnly: true,
+          onChange: () => setKernelCellColor(cell, true),
+        });
+        kernelGrid3.appendChild(cell);
+      }
+    }
+  }
+
+  // ---- MNIST random problem helpers ----
+  function clearCanvas(canvas) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function genRing(H = 28, W = 28) {
+    const cx = (W - 1) / 2, cy = (H - 1) / 2;
+    const R1 = 8 + randInt(0, 3); // 8..11
+    const R2 = R1 - (2 + randInt(0, 2)); // inner 2..4 thinner
+    return Array.from({ length: H }, (_, r) => (
+      Array.from({ length: W }, (_, c) => {
+        const dx = c - cx, dy = r - cy;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        const t = Math.max(0, Math.min(1, 1 - Math.abs(d - (R1+R2)/2) / ((R1-R2)/2 + 1e-6)));
+        return Math.round(t * 255);
+      })
+    ));
+  }
+
+  function genVerticalBar(H = 28, W = 28) {
+    const center = randInt(8, 20);
+    const halfw = randInt(1, 3);
+    return Array.from({ length: H }, (_, r) => (
+      Array.from({ length: W }, (_, c) => (Math.abs(c - center) <= halfw ? 255 : 0))
+    ));
+  }
+
+  function genDiagonal(H = 28, W = 28) {
+    const slash = Math.random() < 0.5; // / or \
+    const thickness = randInt(1, 2);
+    return Array.from({ length: H }, (_, r) => (
+      Array.from({ length: W }, (_, c) => {
+        const d = slash ? Math.abs(r + c - (H - 1)) : Math.abs(r - c);
+        return d <= thickness ? 255 : 0;
+      })
+    ));
+  }
+
+  function genPlus(H = 28, W = 28) {
+    const rc = randInt(10, 18);
+    const cc = randInt(10, 18);
+    const half = randInt(6, 10);
+    const thick = randInt(1, 2);
+    return Array.from({ length: H }, (_, r) => (
+      Array.from({ length: W }, (_, c) => {
+        const vBar = Math.abs(c - cc) <= thick && Math.abs(r - rc) <= half;
+        const hBar = Math.abs(r - rc) <= thick && Math.abs(c - cc) <= half;
+        return (vBar || hBar) ? 255 : 0;
+      })
+    ));
+  }
+
+  const MNIST_KERNELS = [
+    { name: 'Sobel X (horizontal edge detector)', mat: [[-1,0,1],[-2,0,2],[-1,0,1]] },
+    { name: 'Sobel Y (vertical edge detector)', mat: [[-1,-2,-1],[0,0,0],[1,2,1]] },
+    { name: 'Sharpen', mat: [[0,-1,0],[-1,5,-1],[0,-1,0]] },
+    { name: 'Emboss', mat: [[-2,-1,0],[-1,1,1],[0,1,2]] },
+    { name: 'Laplacian', mat: [[0,1,0],[1,-4,1],[0,1,0]] },
+    { name: 'Box blur', mat: [[1,1,1],[1,1,1],[1,1,1]] },
+  ];
+
+  function setMnistProblemRandom() {
+    // Pick a random image generator
+    const gens = [genRing, genVerticalBar, genDiagonal, genPlus];
+    const makeImg = gens[randInt(0, gens.length - 1)];
+    imageMatrix3 = makeImg(28, 28);
+
+    // Pick a random kernel
+    const k = MNIST_KERNELS[randInt(0, MNIST_KERNELS.length - 1)];
+    kernelMatrix3 = k.mat.map(row => row.slice());
+
+    // Update sizes and UI
+    IMG3_ROWS = imageMatrix3.length; IMG3_COLS = imageMatrix3[0].length;
+    KER3_ROWS = kernelMatrix3.length; KER3_COLS = kernelMatrix3[0].length;
+    RES3_ROWS = Math.max(0, IMG3_ROWS - KER3_ROWS + 1);
+    RES3_COLS = Math.max(0, IMG3_COLS - KER3_COLS + 1);
+    setGridTemplates();
+
+    // Color scaling for this kernel grid only
+    const prevMaxAbs = kernelMaxAbs;
+    kernelMaxAbs = computeMaxAbs(kernelMatrix3);
+    buildKernelGrid3();
+    kernelMaxAbs = prevMaxAbs;
+
+    if (kernel3Desc) kernel3Desc.textContent = k.name;
+    drawMatrixOnCanvas(imageMatrix3, mnistOriginalCanvas);
+
+    // Clear pasted answer and output canvas
+    if (mnistPaste) mnistPaste.value = '';
+    if (mnistError) mnistError.textContent = '';
+    clearCanvas(mnistCanvas);
+  }
+
+  // removed numeric result grid for MNIST practice
+
+  function parseMatrixText(text) {
+    const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if (lines.length === 0) return { ok: false, error: 'No content detected.' };
+    const rows = [];
+    let width = -1;
+    for (const line of lines) {
+      const stripped = line.replace(/^\[/, '').replace(/\]$/, '');
+      const parts = stripped.split(/[,\s]+/).filter(Boolean);
+      if (parts.length === 0) continue;
+      const nums = parts.map(Number);
+      if (nums.some(n => Number.isNaN(n))) {
+        return { ok: false, error: 'Non-numeric value found.' };
+      }
+      if (width === -1) width = nums.length;
+      if (nums.length !== width) {
+        return { ok: false, error: 'Row lengths are inconsistent.' };
+      }
+      rows.push(nums);
+    }
+    if (rows.length === 0) return { ok: false, error: 'No numeric rows found.' };
+    return { ok: true, rows };
+  }
+
+  function drawMatrixOnCanvas(mat, canvas) {
+    if (!canvas) return;
+    const rows = mat.length, cols = mat[0].length;
+    const [mn, mx] = (function(){
+      let a = Infinity, b = -Infinity;
+      for (const r of mat) for (const v of r) { if (v < a) a = v; if (v > b) b = v; }
+      if (!isFinite(a)) a = 0; if (!isFinite(b)) b = 1; if (a === b) { a -= 1; b += 1; }
+      return [a,b];
+    })();
+    const ctx = canvas.getContext('2d');
+    // Pick a scale to keep output around ~320px on larger dimension
+    const target = 320;
+    const scale = Math.max(4, Math.floor(target / Math.max(rows, cols)));
+    canvas.width = cols * scale;
+    canvas.height = rows * scale;
+    const imgData = ctx.createImageData(cols, rows);
+    let k = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const t = (mat[r][c] - mn) / (mx - mn);
+        const g = Math.max(0, Math.min(255, Math.round(t * 255)));
+        imgData.data[k++] = g;
+        imgData.data[k++] = g;
+        imgData.data[k++] = g;
+        imgData.data[k++] = 255;
+      }
+    }
+    // Scale up the pixel grid
+    const tmp = document.createElement('canvas');
+    tmp.width = cols; tmp.height = rows;
+    tmp.getContext('2d').putImageData(imgData, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, canvas.width, canvas.height);
+  }
+
+  function onMnistRender() {
+    if (!mnistPaste) return;
+    mnistError.textContent = '';
+    const parsed = parseMatrixText(mnistPaste.value);
+    if (!parsed.ok) {
+      mnistError.textContent = parsed.error;
+      return;
+    }
+    const rows = parsed.rows.length;
+    const cols = parsed.rows[0].length;
+    if (rows !== RES3_ROWS || cols !== RES3_COLS) {
+      mnistError.textContent = `Expected ${RES3_ROWS}×${RES3_COLS} values, got ${rows}×${cols}.`;
+      return;
+    }
+    drawMatrixOnCanvas(parsed.rows, mnistCanvas);
   }
 
   function buildResultGrid() {
@@ -545,6 +754,27 @@
     buildKernelGrid2();
     buildResultGrid2();
     positionKernelOverlay2(0, 0);
+    // MNIST-like: default synthetic 28x28 and Sobel X
+    imageMatrix3 = genRing(28, 28);
+    kernelMatrix3 = [[-1,0,1],[-2,0,2],[-1,0,1]];
+    IMG3_ROWS = imageMatrix3.length; IMG3_COLS = imageMatrix3[0].length;
+    KER3_ROWS = kernelMatrix3.length; KER3_COLS = kernelMatrix3[0].length;
+    // Expect valid convolution output size (e.g., 28x28 with 3x3 => 26x26)
+    RES3_ROWS = Math.max(0, IMG3_ROWS - KER3_ROWS + 1);
+    RES3_COLS = Math.max(0, IMG3_COLS - KER3_COLS + 1);
+    setGridTemplates();
+    // Color scaling for this kernel grid only
+    {
+      const prevMaxAbs = kernelMaxAbs;
+      kernelMaxAbs = computeMaxAbs(kernelMatrix3);
+      buildKernelGrid3();
+      kernelMaxAbs = prevMaxAbs;
+    }
+    drawMatrixOnCanvas(imageMatrix3, mnistOriginalCanvas);
+    if (kernel3Desc) kernel3Desc.textContent = 'Sobel X (horizontal edge detector)';
+    if (mnistPaste) mnistPaste.value = '';
+    if (mnistError) mnistError.textContent = '';
+    clearCanvas(mnistCanvas);
   }
 
   function populateProblemSelect() {
@@ -612,6 +842,11 @@
     copyTextToClipboard(code, copyNumpy2Btn);
   }
 
+  function copyNumpyCodeMnist() {
+    const code = `import numpy as np\n\nimage = ${toNumpyArray(imageMatrix3)}\n\nkernel = ${toNumpyArray(kernelMatrix3)}\n`;
+    copyTextToClipboard(code, mnistCopyBtn);
+  }
+
   // (Controls removed) Heatmaps are always enabled.
 
   // Init
@@ -629,6 +864,9 @@
   if (step2Btn) step2Btn.addEventListener('click', stepOnce2);
   if (showAll2Btn) showAll2Btn.addEventListener('click', showAll2);
   if (copyNumpy2Btn) copyNumpy2Btn.addEventListener('click', copyNumpyCodePadded);
+  if (mnistRenderBtn) mnistRenderBtn.addEventListener('click', onMnistRender);
+  if (mnistCopyBtn) mnistCopyBtn.addEventListener('click', copyNumpyCodeMnist);
+  if (mnistNewBtn) mnistNewBtn.addEventListener('click', setMnistProblemRandom);
   if (showAllBtn) showAllBtn.addEventListener('click', showAll);
 
   // Initial overlay position
