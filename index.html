@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Convolution Explorer — Image Matrix & 3×3 Kernel</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Convolution Explorer</h1>
+    </header>
+
+    <div class="top-controls">
+      <label for="problem-select">Problem:</label>
+      <select id="problem-select" aria-label="Select a practice problem"></select>
+    </div>
+
+    <main class="app">
+      <div class="app-row">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Image Matrix (7×7)</h2>
+        </div>
+        <div id="image-grid" class="grid" aria-label="7 by 7 image grid"></div>
+        <div class="legend" id="image-legend" aria-hidden="true">
+          <span>Low</span>
+          <span class="gradient gradient-image" aria-hidden="true"></span>
+          <span>High</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Kernel (3×3)</h2>
+        </div>
+        <div id="kernel-grid" class="grid kernel" aria-label="3 by 3 kernel grid"></div>
+        <div class="legend" id="kernel-legend" aria-hidden="true">
+          <span>Negative</span>
+          <span class="gradient gradient-kernel" aria-hidden="true"></span>
+          <span>Positive</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Result (5×5)</h2>
+          <div class="controls">
+            <button id="show-all" title="Compute all positions and fill the entire result grid">Show All</button>
+            <button id="copy-numpy" title="Copy NumPy code for this image and kernel">Copy NumPy</button>
+            <button id="step-once" title="Move the kernel one position and compute the output at that location">Step</button>
+          </div>
+        </div>
+        <div id="result-grid" class="grid result" aria-label="5 by 5 result grid"></div>
+      </section>
+      </div>
+      
+  <div class="app-row">
+  <!-- Same-padding demo (output same size as input) -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Image Matrix (same-padding)</h2>
+        </div>
+        <div id="image2-grid" class="grid" aria-label="image grid (same padding)"></div>
+        <div class="legend" aria-hidden="true">
+          <span>Low</span>
+          <span class="gradient gradient-image" aria-hidden="true"></span>
+          <span>High</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Kernel (same)</h2>
+        </div>
+        <div id="kernel2-grid" class="grid kernel" aria-label="kernel grid (same padding)"></div>
+        <div class="legend" aria-hidden="true">
+          <span>Negative</span>
+          <span class="gradient gradient-kernel" aria-hidden="true"></span>
+          <span>Positive</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Result (same size)</h2>
+          <div class="controls">
+            <button id="show2-all" title="Compute all positions with padding and fill the entire result grid">Show All</button>
+            <button id="copy2-numpy" title="Copy NumPy code for this image and kernel">Copy NumPy</button>
+            <button id="step2-once" title="Move the kernel one position (same padding) and compute">Step</button>
+          </div>
+        </div>
+        <div id="result2-grid" class="grid result" aria-label="result grid (same size)"></div>
+      </section>
+      </div>
+    </main>
+
+    
+
+    <script src="./script.js"></script>
+  </body>
+</html>
