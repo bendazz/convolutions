@@ -16,6 +16,8 @@
       <select id="problem-select" aria-label="Select a practice problem"></select>
     </div>
 
+    
+
     <main class="app">
       <div class="app-row">
       <section class="panel">
@@ -198,7 +200,26 @@
       </div>
     </div>
 
-    
+    <hr class="section-divider" />
+
+    <div class="app">
+      <div class="app-row">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Upload & Convolve (grayscale)</h2>
+            <div class="controls">
+              <input id="upload-image" type="file" accept="image/*" />
+              <select id="upload-kernel-select" aria-label="Choose a kernel"></select>
+            </div>
+          </div>
+          <div class="controls inline" aria-hidden="true">
+            <span>Valid convolution; output shrinks by (k−1) each side.</span>
+          </div>
+          <canvas id="upload-original-canvas" class="img-canvas" width="160" height="160" aria-label="uploaded image preview"></canvas>
+          <canvas id="upload-conv-canvas" class="img-canvas" width="160" height="160" aria-label="convolved image"></canvas>
+        </section>
+      </div>
+    </div>
 
     <script src="./script.js"></script>
   </body>

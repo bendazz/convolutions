@@ -42,6 +42,11 @@
   const mnistCopyBtn = document.getElementById('mnist-copy');
   const mnistNewBtn = document.getElementById('mnist-new');
   const kernel3Desc = document.getElementById('kernel3-desc');
+  // Upload & Convolve section DOM
+  const uploadInput = document.getElementById('upload-image');
+  const uploadKernelSelect = document.getElementById('upload-kernel-select');
+  const uploadOriginalCanvas = document.getElementById('upload-original-canvas');
+  const uploadConvCanvas = document.getElementById('upload-conv-canvas');
 
   // Problem state (set per problem)
   let IMG_ROWS = 0, IMG_COLS = 0;
@@ -65,6 +70,8 @@
   let RES3_ROWS = 0, RES3_COLS = 0;
   let imageMatrix3 = [];
   let kernelMatrix3 = [];
+  // Upload image state
+  let uploadImageMatrix = [];
   // RGB state
   let IMG_RGB_ROWS = 0, IMG_RGB_COLS = 0;
   let KER_RGB_ROWS = 0, KER_RGB_COLS = 0;
@@ -103,6 +110,17 @@
   // Helpers
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
   const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  function populateUploadKernels() {
+    if (!uploadKernelSelect) return;
+    uploadKernelSelect.innerHTML = '';
+    (MNIST_KERNELS || []).forEach((k, i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = k.name;
+      uploadKernelSelect.appendChild(opt);
+    });
+  }
 
   function createNumberCell({ min, max, step = 1, value = 0, readOnly = true, onChange }) {
     const input = document.createElement('input');
@@ -551,6 +569,75 @@
       return;
     }
     drawMatrixOnCanvas(parsed.rows, mnistCanvas);
+  }
+
+  function imageElementToGrayscaleMatrix(imgEl, maxSize = 160) {
+    const iw = imgEl.naturalWidth || imgEl.width;
+    const ih = imgEl.naturalHeight || imgEl.height;
+    const scale = Math.min(1, maxSize / Math.max(iw, ih));
+    const W = Math.max(1, Math.floor(iw * scale));
+    const H = Math.max(1, Math.floor(ih * scale));
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const ictx = off.getContext('2d');
+    ictx.imageSmoothingEnabled = true;
+    ictx.drawImage(imgEl, 0, 0, W, H);
+    const data = ictx.getImageData(0, 0, W, H).data;
+    const mat = Array.from({ length: H }, () => Array(W).fill(0));
+    for (let r = 0; r < H; r++) {
+      for (let c = 0; c < W; c++) {
+        const idx = (r * W + c) * 4;
+        const R = data[idx], G = data[idx + 1], B = data[idx + 2];
+        const Y = Math.round(0.299 * R + 0.587 * G + 0.114 * B);
+        mat[r][c] = Y;
+      }
+    }
+    return mat;
+  }
+
+  function loadUploadImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          uploadImageMatrix = imageElementToGrayscaleMatrix(img, 160);
+          drawMatrixOnCanvas(uploadImageMatrix, uploadOriginalCanvas);
+          URL.revokeObjectURL(url);
+          resolve();
+        } catch (e) { reject(e); }
+      };
+      img.onerror = (e) => reject(e);
+      img.src = url;
+    });
+  }
+
+  function convolveValid(mat, ker) {
+    const H = mat.length, W = mat[0].length;
+    const KH = ker.length, KW = ker[0].length;
+    const OH = Math.max(0, H - KH + 1);
+    const OW = Math.max(0, W - KW + 1);
+    const out = Array.from({ length: OH }, () => Array(OW).fill(0));
+    for (let r = 0; r < OH; r++) {
+      for (let c = 0; c < OW; c++) {
+        let s = 0;
+        for (let i = 0; i < KH; i++) {
+          for (let j = 0; j < KW; j++) {
+            s += mat[r + i][c + j] * ker[i][j];
+          }
+        }
+        out[r][c] = s;
+      }
+    }
+    return out;
+  }
+
+  function onUploadConvolve() {
+    if (!uploadImageMatrix || uploadImageMatrix.length === 0) return;
+    const idx = uploadKernelSelect ? Number(uploadKernelSelect.value) : 0;
+    const k = (MNIST_KERNELS && MNIST_KERNELS[idx]) ? MNIST_KERNELS[idx].mat : [[-1,0,1],[-2,0,2],[-1,0,1]];
+    const out = convolveValid(uploadImageMatrix, k);
+    drawMatrixOnCanvas(out, uploadConvCanvas);
   }
 
   function buildResultGrid() {
@@ -1063,6 +1150,7 @@
   // Init
   populateProblemSelect();
   setProblem(0);
+  populateUploadKernels();
 
   // Reposition the overlay on resize in case sizes change
   window.addEventListener('resize', () => positionKernelOverlay(curR, curC));
@@ -1090,6 +1178,18 @@
     const code = `import numpy as np\n\nimage_r = ${toNp(imageMatrixR)}\n\nimage_g = ${toNp(imageMatrixG)}\n\nimage_b = ${toNp(imageMatrixB)}\n\n# Optional combined tensor (C,H,W)\nimage = np.stack([image_r, image_g, image_b], axis=0)\n\n# Three 3x3 kernels (one per channel)\nkernel_r = ${toNp(kernelMatrixR)}\n\nkernel_g = ${toNp(kernelMatrixG)}\n\nkernel_b = ${toNp(kernelMatrixB)}\n\n# Optional combined kernel tensor (C,H,W)\nkernel = np.stack([kernel_r, kernel_g, kernel_b], axis=0)\n`;
     copyTextToClipboard(code, copyNumpyBtnRGB);
   });
+  if (uploadInput) uploadInput.addEventListener('change', async (e) => {
+    const f = uploadInput.files && uploadInput.files[0];
+    if (f) {
+      try { await loadUploadImage(f); } catch {}
+      // Auto-run if a kernel is already selected
+      if (uploadKernelSelect && uploadKernelSelect.value !== '') onUploadConvolve();
+    }
+  });
+  if (uploadKernelSelect) uploadKernelSelect.addEventListener('change', () => {
+    if (uploadImageMatrix && uploadImageMatrix.length) onUploadConvolve();
+  });
+  // No manual button; auto-run on upload or kernel change
 
   // Initial overlay position
   positionKernelOverlay(0, 0);
