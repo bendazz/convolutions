@@ -25,7 +25,9 @@
   const imageRGrid = document.getElementById('imageR-grid');
   const imageGGrid = document.getElementById('imageG-grid');
   const imageBGrid = document.getElementById('imageB-grid');
-  const kernelGridRGB = document.getElementById('kernel-grid-rgb');
+  const kernelRGrid = document.getElementById('kernelR-grid');
+  const kernelGGrid = document.getElementById('kernelG-grid');
+  const kernelBGrid = document.getElementById('kernelB-grid');
   const resultGridRGB = document.getElementById('result-grid-rgb');
   const stepBtnRGB = document.getElementById('step-once-rgb');
   const showAllBtnRGB = document.getElementById('show-all-rgb');
@@ -68,7 +70,7 @@
   let KER_RGB_ROWS = 0, KER_RGB_COLS = 0;
   let RES_RGB_ROWS = 0, RES_RGB_COLS = 0;
   let imageMatrixR = [], imageMatrixG = [], imageMatrixB = [];
-  let kernelMatrixRGB = [];
+  let kernelMatrixR = [], kernelMatrixG = [], kernelMatrixB = [];
   let imageRMin = 0, imageRMax = 255;
   let imageGMin = 0, imageGMax = 255;
   let imageBMin = 0, imageBMax = 255;
@@ -92,7 +94,9 @@
     if (imageRGrid) imageRGrid.style.gridTemplateColumns = `repeat(${IMG_RGB_COLS || IMG_COLS}, var(--cell-size))`;
     if (imageGGrid) imageGGrid.style.gridTemplateColumns = `repeat(${IMG_RGB_COLS || IMG_COLS}, var(--cell-size))`;
     if (imageBGrid) imageBGrid.style.gridTemplateColumns = `repeat(${IMG_RGB_COLS || IMG_COLS}, var(--cell-size))`;
-    if (kernelGridRGB) kernelGridRGB.style.gridTemplateColumns = `repeat(${KER_RGB_COLS || KER_COLS}, var(--cell-size))`;
+  if (kernelRGrid) kernelRGrid.style.gridTemplateColumns = `repeat(${KER_RGB_COLS || KER_COLS}, var(--cell-size))`;
+  if (kernelGGrid) kernelGGrid.style.gridTemplateColumns = `repeat(${KER_RGB_COLS || KER_COLS}, var(--cell-size))`;
+  if (kernelBGrid) kernelBGrid.style.gridTemplateColumns = `repeat(${KER_RGB_COLS || KER_COLS}, var(--cell-size))`;
     if (resultGridRGB) resultGridRGB.style.gridTemplateColumns = `repeat(${RES_RGB_COLS || RESULT_COLS}, var(--cell-size))`;
   }
 
@@ -300,22 +304,32 @@
     if (imageBGrid) imageBGrid.querySelectorAll('input.cell').forEach(el => setImageCellColorChannel(el, true, 'B', imageBMin, imageBMax));
   }
 
-  function buildKernelGridRGB() {
-    if (!kernelGridRGB) return;
-    kernelGridRGB.innerHTML = '';
-    for (let r = 0; r < KER_RGB_ROWS; r++) {
-      for (let c = 0; c < KER_RGB_COLS; c++) {
-        const cell = createNumberCell({
-          min: -999,
-          max: 999,
-          step: 1,
-          value: kernelMatrixRGB[r][c],
-          readOnly: true,
-          onChange: () => setKernelCellColor(cell, true),
-        });
-        kernelGridRGB.appendChild(cell);
-      }
+  function buildKernelGridsRGB() {
+    if (!kernelRGrid || !kernelGGrid || !kernelBGrid) return;
+    kernelRGrid.innerHTML = '';
+    kernelGGrid.innerHTML = '';
+    kernelBGrid.innerHTML = '';
+    // Use same diverging scale per-channel for clarity
+    const prev = kernelMaxAbs;
+    // R
+    kernelMaxAbs = computeMaxAbs(kernelMatrixR);
+    for (let r = 0; r < KER_RGB_ROWS; r++) for (let c = 0; c < KER_RGB_COLS; c++) {
+      const cell = createNumberCell({ min: -999, max: 999, step: 1, value: kernelMatrixR[r][c], readOnly: true, onChange: () => setKernelCellColor(cell, true) });
+      kernelRGrid.appendChild(cell);
     }
+    // G
+    kernelMaxAbs = computeMaxAbs(kernelMatrixG);
+    for (let r = 0; r < KER_RGB_ROWS; r++) for (let c = 0; c < KER_RGB_COLS; c++) {
+      const cell = createNumberCell({ min: -999, max: 999, step: 1, value: kernelMatrixG[r][c], readOnly: true, onChange: () => setKernelCellColor(cell, true) });
+      kernelGGrid.appendChild(cell);
+    }
+    // B
+    kernelMaxAbs = computeMaxAbs(kernelMatrixB);
+    for (let r = 0; r < KER_RGB_ROWS; r++) for (let c = 0; c < KER_RGB_COLS; c++) {
+      const cell = createNumberCell({ min: -999, max: 999, step: 1, value: kernelMatrixB[r][c], readOnly: true, onChange: () => setKernelCellColor(cell, true) });
+      kernelBGrid.appendChild(cell);
+    }
+    kernelMaxAbs = prev;
   }
 
   function buildResultGridRGB() {
@@ -728,11 +742,13 @@
     let sum = 0;
     for (let i = 0; i < KER_RGB_ROWS; i++) {
       for (let j = 0; j < KER_RGB_COLS; j++) {
-        const kerVal = readGridCellValue(kernelGridRGB, i, j, KER_RGB_COLS);
+        const kR = readGridCellValue(kernelRGrid, i, j, KER_RGB_COLS);
+        const kG = readGridCellValue(kernelGGrid, i, j, KER_RGB_COLS);
+        const kB = readGridCellValue(kernelBGrid, i, j, KER_RGB_COLS);
         const rVal = readGridCellValue(imageRGrid, r + i, c + j, IMG_RGB_COLS);
         const gVal = readGridCellValue(imageGGrid, r + i, c + j, IMG_RGB_COLS);
         const bVal = readGridCellValue(imageBGrid, r + i, c + j, IMG_RGB_COLS);
-        sum += kerVal * (rVal + gVal + bVal);
+        sum += kR * rVal + kG * gVal + kB * bVal;
       }
     }
     return sum;
@@ -955,7 +971,9 @@
     imageMatrixR = imageMatrix.map(row => row.slice());
     imageMatrixG = imageMatrix.map(row => row.slice());
     imageMatrixB = imageMatrix.map(row => row.slice());
-    kernelMatrixRGB = kernelMatrix.map(row => row.slice());
+  kernelMatrixR = kernelMatrix.map(row => row.slice());
+  kernelMatrixG = kernelMatrix.map(row => row.slice());
+  kernelMatrixB = kernelMatrix.map(row => row.slice());
     IMG_RGB_ROWS = IMG_ROWS; IMG_RGB_COLS = IMG_COLS;
     KER_RGB_ROWS = KER_ROWS; KER_RGB_COLS = KER_COLS;
     RES_RGB_ROWS = RESULT_ROWS; RES_RGB_COLS = RESULT_COLS;
@@ -964,13 +982,8 @@
     [imageBMin, imageBMax] = computeMinMax(imageMatrixB);
     setGridTemplates();
     buildRgbImageGrids();
-    // color scaling for RGB kernel grid only
-    {
-      const prevMaxAbs = kernelMaxAbs;
-      kernelMaxAbs = computeMaxAbs(kernelMatrixRGB);
-      buildKernelGridRGB();
-      kernelMaxAbs = prevMaxAbs;
-    }
+    // build three kernel grids with per-channel scaling
+    buildKernelGridsRGB();
     buildResultGridRGB();
     positionKernelOverlayRGB(0, 0);
   }
@@ -1074,7 +1087,7 @@
       const rows = mat.map(r => `  [${r.join(', ')}]`).join(',\n');
       return `np.array([\n${rows}\n], dtype=np.int32)`;
     };
-    const code = `import numpy as np\n\nimage_r = ${toNp(imageMatrixR)}\n\nimage_g = ${toNp(imageMatrixG)}\n\nimage_b = ${toNp(imageMatrixB)}\n\n# Optional combined tensor (C,H,W)\nimage = np.stack([image_r, image_g, image_b], axis=0)\n\nkernel = ${toNp(kernelMatrixRGB)}\n`;
+    const code = `import numpy as np\n\nimage_r = ${toNp(imageMatrixR)}\n\nimage_g = ${toNp(imageMatrixG)}\n\nimage_b = ${toNp(imageMatrixB)}\n\n# Optional combined tensor (C,H,W)\nimage = np.stack([image_r, image_g, image_b], axis=0)\n\n# Three 3x3 kernels (one per channel)\nkernel_r = ${toNp(kernelMatrixR)}\n\nkernel_g = ${toNp(kernelMatrixG)}\n\nkernel_b = ${toNp(kernelMatrixB)}\n\n# Optional combined kernel tensor (C,H,W)\nkernel = np.stack([kernel_r, kernel_g, kernel_b], axis=0)\n`;
     copyTextToClipboard(code, copyNumpyBtnRGB);
   });
 

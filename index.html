@@ -163,9 +163,20 @@
 
         <section class="panel">
           <div class="panel-header">
-            <h2>Kernel (3×3)</h2>
+            <h2>Kernel (3×3 × 3 channels)</h2>
           </div>
-          <div id="kernel-grid-rgb" class="grid kernel" aria-label="3 by 3 kernel grid (RGB)"></div>
+          <div class="rgb-channel">
+            <div class="rgb-label" aria-hidden="true">R</div>
+            <div id="kernelR-grid" class="grid kernel" aria-label="3 by 3 kernel grid (Red)"></div>
+          </div>
+          <div class="rgb-channel">
+            <div class="rgb-label" aria-hidden="true">G</div>
+            <div id="kernelG-grid" class="grid kernel" aria-label="3 by 3 kernel grid (Green)"></div>
+          </div>
+          <div class="rgb-channel">
+            <div class="rgb-label" aria-hidden="true">B</div>
+            <div id="kernelB-grid" class="grid kernel" aria-label="3 by 3 kernel grid (Blue)"></div>
+          </div>
           <div class="legend" aria-hidden="true">
             <span>Negative</span>
             <span class="gradient gradient-kernel" aria-hidden="true"></span>
